@@ -27,7 +27,6 @@ void TcpThread::run()
 	blFileOpen = false;
 	blerror = false;
 	upload_AND_download_Path = "G:\\TEEData\\";
-	download_Path = "G:\\TEEData\\";
 	tcpServerConnection = new QTcpSocket;
 	if (!tcpServerConnection->setSocketDescriptor(socketDescriptor)) {
 		emit error(tcpServerConnection->error());
@@ -74,252 +73,7 @@ void TcpThread::receiveData()    //接收文件
 			if((tcpServerConnection->bytesAvailable() >= fileNameSize) && (fileName == 0))  
 			{ 
 				in>>fileName;  
-				sFile = fileName.left(fileName.indexOf('>') + 1);
-				sFile += fileName.right(fileName.size()- fileName.lastIndexOf('<'));
-				sFileName = fileName.right(fileName.size() - fileName.lastIndexOf('>') - 1);
-				sFileName = sFileName.right(fileName.size() - fileName.lastIndexOf('/') - 1);
-				sFileName = sFileName.left(sFileName.indexOf('<'));
-				m_serverPath = fileName.right(fileName.size() - fileName.indexOf('>') - 1);
-				m_serverPath = m_serverPath.left(m_serverPath.indexOf('<'));
-				/*下载文件*/
-				if(sFile == "DOWN_FILE><DOWN_END")
-				{
-					//遍历文件夹
-					path = download_Path + sFileName.replace("/", "\\"); 
-					dir.setFile(path);
-					bool blInfo = false;
-					if(dir.exists())
-					{
-						blInfo = true;
-					}
-					if(!blInfo)
-					{   //没有要下载的这个文件
-						serverData = "no such file";
-						serverMessage = "DATA_BEGIN>";
-						serverMessage += serverData;
-						serverMessage += "<DATA_END";
-						QDataStream out(&block,QIODevice::WriteOnly);
-						out.setVersion(QDataStream::Qt_4_7);
-						out<<qint64(0)<<qint64(0)<<serverMessage;
-						TotalBytes += block.size();
-						out.device()->seek(0);
-						out<<TotalBytes<<qint64(block.size() - sizeof(qint64)*2);
-						tcpServerConnection->write(block);
-						if(!tcpServerConnection->waitForBytesWritten(5000))
-						{
-							qDebug()<<"data transfer error";
-						}
-						TotalBytes = 0;
-						bytesReceived = 0;
-						fileNameSize = 0;
-						fileName.clear();
-						sFileName.clear();
-						sFile.clear();
-						serverData.clear();
-						serverMessage.clear();
-						m_qfileinfolist.clear();
-						m_serverPath.clear();
-						tcpServerConnection->disconnect();
-						tcpServerConnection->disconnectFromHost();
-						tcpServerConnection->deleteLater();
-						emit disconnectedSignal(socketDescriptor);
-						quit();
-					}
-					fileName = path;
-					localFile = new QFile(fileName);
-					if(!localFile->open(QFile::ReadOnly))  
-					{  
-						blDownLoadFileOpen = false;
-						localFile->deleteLater();
-						//delete localFile;
-						return;  
-					}  
-					blDownLoadFileOpen = true;
-					TotalBytes = localFile->size(); 
-					QDataStream sendOut(&outBlock,QIODevice::WriteOnly);  
-					sendOut.setVersion(QDataStream::Qt_4_7);  
-					QString currentFile = fileName.right(fileName.size()-  
-						fileName.lastIndexOf('\\')-1);        //.right出去文件路径部分，仅将文件部分保存在currentFile中
-					currentFile = sFileName;
-					sendOut<<qint64(0)<<qint64(0)<<currentFile;  //构造一个临时的文件头
-					TotalBytes += outBlock.size();  //获得文件头的实际存储大小
-					sendOut.device()->seek(0);  //将读写操作指向从头开始
-					sendOut<<TotalBytes<<qint64(outBlock.size()- sizeof(qint64)*2);  
-					bytesToWrite = TotalBytes - tcpServerConnection->write(outBlock);  
-					qDebug()<<currentFile<<TotalBytes;  
-					outBlock.resize(0);
-				}
-				/*上传文件*/
-				else if(sFile == "UP_FILE><UP_END")     
-				{
-					currenttime = QDateTime::currentDateTime().toString("yyyyMMdd");
-					bytesReceived += fileNameSize;  
-					m_serverPath = m_serverPath.replace('/','\\');
-					QDir qdircheck;
-					_username = m_serverPath.left(m_serverPath.indexOf('\\'));/*用户名*/
-					_currentFilename = m_serverPath.right(m_serverPath.size() - m_serverPath.lastIndexOf('\\') - 1);
-					m_filePath = upload_AND_download_Path + _username + "\\" + currenttime + 
-						m_serverPath.remove(m_serverPath.left(m_serverPath.indexOf('\\')));
-					m_filePath = m_filePath.left(m_filePath.lastIndexOf('\\')) + "\\";
-					if(!qdircheck.exists(m_filePath))
-					{   //文件不存在
-						qdircheck.mkpath(m_filePath);
-					}
-					else if (qdircheck.exists(m_filePath))
-					{   //文件存在
-
-					}
- 					localFile = new QFile(m_filePath + _currentFilename);  //文件存储的路径
-					if(!localFile->open(QFile::WriteOnly))  
-					{  
-						blFileOpen = false;
-						localFile->deleteLater();
-						emit disconnectedSignal(socketDescriptor);
-						quit();
-					}  
-					blFileOpen = true;
-				}
-				/*发送查询到的文件列表(基于文件系统的查找)*/
-				else if (sFile == "FILENAME_BEGIN><FILENAME_END")
-				{
-					/*发送数据*/
-					QString _filter;
-					m_qfileinfolist = GetFileList(download_Path + sFileName); 
-					foreach(QFileInfo _fileinfo, m_qfileinfolist)
-					{
-						_filter = _fileinfo.completeSuffix();
-						if(_filter != "avi")
-						{
-							continue;
-						}
-						if (!sFileName.isEmpty())
-						{
-							serverData.append(_fileinfo.absoluteFilePath().replace('/','\\').remove(download_Path + sFileName.left(sFileName.indexOf('\\') + 1)) + "|");
-						}
-					}
-					serverData = serverData.left(serverData.length() - 1);
-					serverMessage = "FILENAME_BEGIN>";
-					serverMessage += serverData;
-					serverMessage += "<FILENAME_END";
-					QDataStream out(&block,QIODevice::WriteOnly);
-					out.setVersion(QDataStream::Qt_4_7);
-					out<<qint64(0)<<qint64(0)<<serverMessage;
-					TotalBytes += block.size();
-					out.device()->seek(0);
-					out<<TotalBytes<<qint64(block.size() - sizeof(qint64)*2);
-					tcpServerConnection->write(block);
-					if(!tcpServerConnection->waitForBytesWritten(5000))
-					{
-						qDebug()<<"data transfer error";
-					}
-					TotalBytes = 0;
-					bytesReceived = 0;
-					fileNameSize = 0;
-					fileName.clear();
-					sFileName.clear();
-					sFile.clear();
-					serverData.clear();
-					serverMessage.clear();
-					m_qfileinfolist.clear();
-					m_serverPath.clear();
-					_filter.clear();
-					tcpServerConnection->disconnect();
-					tcpServerConnection->deleteLater();
-					if (serverData != "")
-					{
-						qDebug()<<serverData;
-					}
-					emit disconnectedSignal(socketDescriptor);
-					quit();
-				}
-				/*用户意见反馈*/
-				else if (sFile == "USER_FEEDBACK><USER_FEEDBACK")
-				{
-					try
-					{
-						_qmutex.lock();
-						bool _blisfeedback = _datastore.insertUserFeedback(m_serverPath.left(m_serverPath.indexOf('&')), m_serverPath, 
-							tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
-						_qmutex.unlock();
-						if (!_blisfeedback)
-						{
-							throw QString("写数据库错误");
-						}
-						TotalBytes = 0;
-						bytesReceived = 0;
-						fileNameSize = 0;
-						fileName.clear();
-						sFileName.clear();
-						sFile.clear();
-						m_serverPath.clear();
-						tcpServerConnection->disconnect();
-						tcpServerConnection->disconnectFromHost();
-						tcpServerConnection->deleteLater();
-						emit disconnectedSignal(socketDescriptor);
-						quit();
-					}
-					catch(QString err)
-					{
-						TotalBytes = 0;
-						bytesReceived = 0;
-						fileNameSize = 0;
-						fileName.clear();
-						sFileName.clear();
-						sFile.clear();
-						m_serverPath.clear();
-						tcpServerConnection->disconnect();
-						tcpServerConnection->disconnectFromHost();
-						tcpServerConnection->deleteLater();
-						emit disconnectedSignal(socketDescriptor);
-						quit();
-						//wait();
-					}
-				}
-				/*病例数据搜索*/
-				else if (sFile == ".1.><.1.") 
-				{
-					sendDataToClient(search_List_End(m_serverPath));
-					emit disconnectedSignal(socketDescriptor);
-				}
-				/*用户登陆验证*/
-				else if (sFile == ".2.><.2.") 
-				{
-					QStringList userLoginInfo = m_serverPath.split(".CASIT.");
-					QString _userName, _userPassword;   //用户名与密码
-					if (userLoginInfo.length() >= 2)
-					{
-						_userName = userLoginInfo[0];
-						_userPassword = userLoginInfo[1];
-					}
-					/*    数据库匹配用户信息    */
-					int _userInfoCheck = 0;    
-					//数据库查询
-					QMutexLocker _qmutexlocker(&_qmutex);
-					//_qmutex.lock();
-					if (_datastore.searchUserAndPwd(_userName, _userPassword))
-					{
-						_userInfoCheck = 1;
-					}
-					else
-					{
-						_userInfoCheck = 0;
-					}
-					//_qmutex.unlock();
-					/*******************************************/
-					if (_userInfoCheck == 1)
-					{
-						qDebug()<<"user:" + _userName + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
-					}
-					sendUserLoginAndRegisterCheck(_userInfoCheck);           //0:验证失败，1:验证成功
-				}
-				/*非法连接*/
-				else
-				{ 
-					tcpServerConnection->disconnect();
-					tcpServerConnection->deleteLater();
-					emit disconnectedSignal(socketDescriptor);
-					quit();
-				}
+				dataProcess(fileName);
 			}  
 			else  
 			{  
@@ -342,10 +96,14 @@ void TcpThread::receiveData()    //接收文件
 			if(bytesReceived == TotalBytes)  
 			{   
 				localFile->close();
-				_qmutex.lock();
-				_datastore.insertDataToSql(_username, upload_AND_download_Path + m_serverPath.remove(m_serverPath.lastIndexOf('\\')), 
-					upload_AND_download_Path +  m_serverPath, TotalBytes, FileDigest(upload_AND_download_Path + m_serverPath), "NULL");
-				_qmutex.unlock();
+				QMutexLocker m_qmutexlocker(&_qmutex);
+				//_qmutex.lock();
+				if (!_datastore.insertDataToSql(_username, upload_AND_download_Path, 
+					upload_AND_download_Path +  m_serverPath, TotalBytes, FileDigest(upload_AND_download_Path + m_serverPath), "NULL"))
+				{
+					qDebug()<<"文件写入数据库失败！";
+				}
+				//_qmutex.unlock();
 				qDebug()<<sFileName;
 				TotalBytes = 0;
 				bytesReceived = 0;
@@ -375,6 +133,256 @@ void TcpThread::receiveData()    //接收文件
 	}
 	catch(QString err)
 	{}
+}
+
+void TcpThread::dataProcess(QString _data)
+{
+	sFile = fileName.left(fileName.indexOf('>') + 1);
+	sFile += fileName.right(fileName.size()- fileName.lastIndexOf('<'));
+	sFileName = fileName.right(fileName.size() - fileName.lastIndexOf('>') - 1);
+	sFileName = sFileName.right(fileName.size() - fileName.lastIndexOf('/') - 1);
+	sFileName = sFileName.left(sFileName.indexOf('<'));
+	m_serverPath = fileName.right(fileName.size() - fileName.indexOf('>') - 1);
+	m_serverPath = m_serverPath.left(m_serverPath.indexOf('<'));
+	/*下载文件*/
+	if(sFile == "DOWN_FILE><DOWN_END")
+	{
+		//遍历文件夹
+		path = download_Path + sFileName.replace("/", "\\"); 
+		dir.setFile(path);
+		bool blInfo = false;
+		if(dir.exists())
+		{
+			blInfo = true;
+		}
+		if(!blInfo)
+		{   //没有要下载的这个文件
+			serverData = "no such file";
+			serverMessage = "DATA_BEGIN>";
+			serverMessage += serverData;
+			serverMessage += "<DATA_END";
+			QDataStream out(&block,QIODevice::WriteOnly);
+			out.setVersion(QDataStream::Qt_4_7);
+			out<<qint64(0)<<qint64(0)<<serverMessage;
+			TotalBytes += block.size();
+			out.device()->seek(0);
+			out<<TotalBytes<<qint64(block.size() - sizeof(qint64)*2);
+			tcpServerConnection->write(block);
+			if(!tcpServerConnection->waitForBytesWritten(5000))
+			{
+				qDebug()<<"data transfer error";
+			}
+			TotalBytes = 0;
+			bytesReceived = 0;
+			fileNameSize = 0;
+			fileName.clear();
+			sFileName.clear();
+			sFile.clear();
+			serverData.clear();
+			serverMessage.clear();
+			m_qfileinfolist.clear();
+			m_serverPath.clear();
+			tcpServerConnection->disconnect();
+			tcpServerConnection->disconnectFromHost();
+			tcpServerConnection->deleteLater();
+			emit disconnectedSignal(socketDescriptor);
+			quit();
+		}
+		fileName = path;
+		localFile = new QFile(fileName);
+		if(!localFile->open(QFile::ReadOnly))  
+		{  
+			blDownLoadFileOpen = false;
+			localFile->deleteLater();
+			return;  
+		}  
+		blDownLoadFileOpen = true;
+		TotalBytes = localFile->size(); 
+		QDataStream sendOut(&outBlock,QIODevice::WriteOnly);  
+		sendOut.setVersion(QDataStream::Qt_4_7);  
+		QString currentFile = fileName.right(fileName.size()-  
+			fileName.lastIndexOf('\\')-1);        //.right出去文件路径部分，仅将文件部分保存在currentFile中
+		currentFile = sFileName;
+		sendOut<<qint64(0)<<qint64(0)<<currentFile;  //构造一个临时的文件头
+		TotalBytes += outBlock.size();  //获得文件头的实际存储大小
+		sendOut.device()->seek(0);  //将读写操作指向从头开始
+		sendOut<<TotalBytes<<qint64(outBlock.size()- sizeof(qint64)*2);  
+		bytesToWrite = TotalBytes - tcpServerConnection->write(outBlock);  
+		qDebug()<<currentFile<<TotalBytes;  
+		outBlock.resize(0);
+	}
+	/*上传文件*/
+	else if(sFile == "UP_FILE><UP_END")     
+	{
+		m_serverPath = m_serverPath.replace('/',"\\");
+		m_upFilePath = m_serverPath;
+		currenttime = QDateTime::currentDateTime().toString("yyyyMMdd");
+		bytesReceived += fileNameSize;  
+		m_upFilePath = m_upFilePath.replace('/','\\');
+		QDir qdircheck;
+		_username = m_upFilePath.left(m_upFilePath.indexOf('\\'));/*用户名*/
+		_currentFilename = m_upFilePath.right(m_upFilePath.size() - m_upFilePath.lastIndexOf('\\') - 1);
+		m_filePath = upload_AND_download_Path + _username + "\\" + currenttime + 
+			m_upFilePath.remove(m_upFilePath.left(m_upFilePath.indexOf('\\')));
+		m_filePath = m_filePath.left(m_filePath.lastIndexOf('\\')) + "\\";
+		if(!qdircheck.exists(m_filePath))
+		{   //文件不存在
+			qdircheck.mkpath(m_filePath);
+		}
+		else if (qdircheck.exists(m_filePath))
+		{   //文件存在
+		}
+		localFile = new QFile(m_filePath + _currentFilename);  //文件存储的路径
+		if(!localFile->open(QFile::WriteOnly))  
+		{  
+			blFileOpen = false;
+			localFile->deleteLater();
+			emit disconnectedSignal(socketDescriptor);
+			quit();
+		}  
+		blFileOpen = true;
+	}
+	/*发送查询到的文件列表(基于文件系统的查找)*/
+	else if (sFile == "FILENAME_BEGIN><FILENAME_END")
+	{
+		/*发送数据*/
+		QString _filter;
+		m_qfileinfolist = GetFileList(download_Path + sFileName); 
+		foreach(QFileInfo _fileinfo, m_qfileinfolist)
+		{
+			_filter = _fileinfo.completeSuffix();
+			if(_filter != "avi")
+			{
+				continue;
+			}
+			if (!sFileName.isEmpty())
+			{
+				serverData.append(_fileinfo.absoluteFilePath().replace('/','\\').remove(download_Path + sFileName.left(sFileName.indexOf('\\') + 1)) + "|");
+			}
+		}
+		serverData = serverData.left(serverData.length() - 1);
+		serverMessage = "FILENAME_BEGIN>";
+		serverMessage += serverData;
+		serverMessage += "<FILENAME_END";
+		QDataStream out(&block,QIODevice::WriteOnly);
+		out.setVersion(QDataStream::Qt_4_7);
+		out<<qint64(0)<<qint64(0)<<serverMessage;
+		TotalBytes += block.size();
+		out.device()->seek(0);
+		out<<TotalBytes<<qint64(block.size() - sizeof(qint64)*2);
+		tcpServerConnection->write(block);
+		if(!tcpServerConnection->waitForBytesWritten(5000))
+		{
+			qDebug()<<"data transfer error";
+		}
+		TotalBytes = 0;
+		bytesReceived = 0;
+		fileNameSize = 0;
+		fileName.clear();
+		sFileName.clear();
+		sFile.clear();
+		serverData.clear();
+		serverMessage.clear();
+		m_qfileinfolist.clear();
+		m_serverPath.clear();
+		_filter.clear();
+		tcpServerConnection->disconnect();
+		tcpServerConnection->deleteLater();
+		if (serverData != "")
+		{
+			qDebug()<<serverData;
+		}
+		emit disconnectedSignal(socketDescriptor);
+		quit();
+	}
+	/*用户意见反馈*/
+	else if (sFile == "USER_FEEDBACK><USER_FEEDBACK")
+	{
+		try
+		{
+			_qmutex.lock();
+			bool _blisfeedback = _datastore.insertUserFeedback(m_serverPath.left(m_serverPath.indexOf('&')), m_serverPath, 
+				tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
+			_qmutex.unlock();
+			if (!_blisfeedback)
+			{
+				throw QString("写数据库错误");
+			}
+			TotalBytes = 0;
+			bytesReceived = 0;
+			fileNameSize = 0;
+			fileName.clear();
+			sFileName.clear();
+			sFile.clear();
+			m_serverPath.clear();
+			tcpServerConnection->disconnect();
+			tcpServerConnection->disconnectFromHost();
+			tcpServerConnection->deleteLater();
+			emit disconnectedSignal(socketDescriptor);
+			quit();
+		}
+		catch(QString err)
+		{
+			TotalBytes = 0;
+			bytesReceived = 0;
+			fileNameSize = 0;
+			fileName.clear();
+			sFileName.clear();
+			sFile.clear();
+			m_serverPath.clear();
+			tcpServerConnection->disconnect();
+			tcpServerConnection->disconnectFromHost();
+			tcpServerConnection->deleteLater();
+			emit disconnectedSignal(socketDescriptor);
+			quit();
+			//wait();
+		}
+	}
+	/*病例数据搜索*/
+	else if (sFile == ".1.><.1.") 
+	{
+		sendDataToClient(search_List_End(m_serverPath));
+		emit disconnectedSignal(socketDescriptor);
+	}
+	/*用户登陆验证*/
+	else if (sFile == ".2.><.2.") 
+	{
+		QStringList userLoginInfo = m_serverPath.split(".CASIT.");
+		QString _userName, _userPassword;   //用户名与密码
+		if (userLoginInfo.length() >= 2)
+		{
+			_userName = userLoginInfo[0];
+			_userPassword = userLoginInfo[1];
+		}
+		/*    数据库匹配用户信息    */
+		int _userInfoCheck = 0;    
+		//数据库查询
+		QMutexLocker _qmutexlocker(&_qmutex);
+		//_qmutex.lock();
+		if (_datastore.searchUserAndPwd(_userName, _userPassword))
+		{
+			_userInfoCheck = 1;
+		}
+		else
+		{
+			_userInfoCheck = 0;
+		}
+		//_qmutex.unlock();
+		/*******************************************/
+		if (_userInfoCheck == 1)
+		{
+			qDebug()<<"user:" + _userName + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
+		}
+		sendUserLoginAndRegisterCheck(_userInfoCheck);           //0:验证失败，1:验证成功
+	}
+	/*非法连接*/
+	else
+	{ 
+		tcpServerConnection->disconnect();
+		tcpServerConnection->deleteLater();
+		emit disconnectedSignal(socketDescriptor);
+		quit();
+	}
 }
 
 void TcpThread::updateClientProgress(qint64 numBytes)  

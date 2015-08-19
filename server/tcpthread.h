@@ -40,6 +40,7 @@ public:
 	QString search_List_End(QString _patient_Name);   //获取该病例名称下所有病例数据
 	void sendDataToClient(QString _currentData);/*发送数据*/
 	void sendUserLoginAndRegisterCheck(int _check);//用户信息检测结果
+	void dataProcess(QString _data);   /*对接收的数据进行处理*/
 signals:
 	void error(QTcpSocket::SocketError socketError);
 	void bytesArrived(qint64,qint32,int);
@@ -96,6 +97,7 @@ private:
 	QString tempPathstory;
 	QString _username;/*用户名*/
 	QString _currentFilename ;/*文件名*/
+	QString m_upFilePath;    /*接收文件上传的路径*/
 
 	//database
 	QSqlDatabase data_base;

@@ -112,7 +112,7 @@ bool datastore::insertUserFeedback(QString _user, QString _feedback, QString _ip
 	if (!query.exec(sql))
 	{
 		//data_base.close();
-		m_mutex.unlock();
+		//m_mutex.unlock();
 		return false;
 	}
 	//data_base.close();
