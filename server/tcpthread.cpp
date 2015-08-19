@@ -154,11 +154,12 @@ void TcpThread::receiveData()    //接收文件
 				{
 					currenttime = QDateTime::currentDateTime().toString("yyyyMMdd");
 					bytesReceived += fileNameSize;  
+					m_serverPath = m_serverPath.replace('/','\\');
 					QDir qdircheck;
-					_username = sFileName.left(sFileName.indexOf('\\'));/*用户名*/
-					_currentFilename = sFileName.right(sFileName.size() - sFileName.lastIndexOf('\\') - 1);
+					_username = m_serverPath.left(m_serverPath.indexOf('\\'));/*用户名*/
+					_currentFilename = m_serverPath.right(m_serverPath.size() - m_serverPath.lastIndexOf('\\') - 1);
 					m_filePath = upload_AND_download_Path + _username + "\\" + currenttime + 
-						sFileName.remove(sFileName.left(sFileName.indexOf('\\')));
+						m_serverPath.remove(m_serverPath.left(m_serverPath.indexOf('\\')));
 					m_filePath = m_filePath.left(m_filePath.lastIndexOf('\\')) + "\\";
 					if(!qdircheck.exists(m_filePath))
 					{   //文件不存在
@@ -168,7 +169,7 @@ void TcpThread::receiveData()    //接收文件
 					{   //文件存在
 
 					}
-					localFile = new QFile(m_filePath + _currentFilename);  //文件存储的路径
+ 					localFile = new QFile(m_filePath + _currentFilename);  //文件存储的路径
 					if(!localFile->open(QFile::WriteOnly))  
 					{  
 						blFileOpen = false;
@@ -237,7 +238,8 @@ void TcpThread::receiveData()    //接收文件
 					try
 					{
 						_qmutex.lock();
-						bool _blisfeedback = _datastore.insertUserFeedback(m_serverPath.left(m_serverPath.indexOf('&')), m_serverPath, tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
+						bool _blisfeedback = _datastore.insertUserFeedback(m_serverPath.left(m_serverPath.indexOf('&')), m_serverPath, 
+							tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
 						_qmutex.unlock();
 						if (!_blisfeedback)
 						{
@@ -341,7 +343,8 @@ void TcpThread::receiveData()    //接收文件
 			{   
 				localFile->close();
 				_qmutex.lock();
-				_datastore.insertDataToSql(tempPathstory.left(tempPathstory.replace('/','\\').indexOf('\\')), m_serverPath, m_filePath + sFileName, TotalBytes, FileDigest(m_filePath + sFileName), "NULL");
+				_datastore.insertDataToSql(_username, upload_AND_download_Path + m_serverPath.remove(m_serverPath.lastIndexOf('\\')), 
+					upload_AND_download_Path +  m_serverPath, TotalBytes, FileDigest(upload_AND_download_Path + m_serverPath), "NULL");
 				_qmutex.unlock();
 				qDebug()<<sFileName;
 				TotalBytes = 0;
@@ -355,7 +358,6 @@ void TcpThread::receiveData()    //接收文件
 				blFileOpen = false;
 				tempPathstory.clear();
 				currenttime.clear();
-				//sleep(3);
 				tcpServerConnection->disconnect();
 				tcpServerConnection->disconnectFromHost();
 				tcpServerConnection->deleteLater();
@@ -411,7 +413,6 @@ void TcpThread::updateClientProgress(qint64 numBytes)
 			string_list.clear();
 			path.clear();
 			blDownLoadFileOpen = false;
-			//sleep(3);
 			tcpServerConnection->disconnect();
 			tcpServerConnection->disconnectFromHost();
 			tcpServerConnection->deleteLater();
