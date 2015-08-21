@@ -47,7 +47,7 @@ bool datastore::dataBaseConnect()
 	data_base.setDatabaseName("teeair");
 	data_base.setUserName("root");
 	data_base.setPassword("123456");
-	//data_base.setConnectOptions("CLIENT_SSL=1;CLIENT_IGNORE_SPACE=1");//使用SSL  
+	data_base.setConnectOptions("CLIENT_SSL=1;CLIENT_IGNORE_SPACE=1");//使用SSL  
 	if(!data_base.open())
 	{
 		return false;
@@ -94,11 +94,11 @@ bool datastore::insertDataToSql(QString _username, QString _server_path, QString
 	QString sql = "insert into medicaldata (username, server_path, local_path, size, md5, timer) values ('" + _username + "','" + _server_path + "','" + _localfile.replace("\\", "\\\\") + "','"  + QString::number(_sieze) + "','" + _md5 + "','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
 	if(!query.exec(sql))
 	{
-		//data_base.close();
+		
 		//m_mutex.unlock();
 		return false;
 	}
-	//data_base.close();
+	
 	//m_mutex.unlock();
 	return true;
 }
@@ -111,12 +111,12 @@ bool datastore::insertUserFeedback(QString _user, QString _feedback, QString _ip
 	QString sql = "insert into user_feedback (user, feedback, ip_address, port, time) values ('" + _user + "','" + _feedback + "','" + _ip_address + "','"  + QString::number(_port) + "','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
 	if (!query.exec(sql))
 	{
-		//data_base.close();
 		//m_mutex.unlock();
+		qDebug()<<data_base.lastError();
 		return false;
 	}
-	//data_base.close();
 	//m_mutex.unlock();
+	qDebug()<<"用户反馈！";
 	return true;
 }
 
@@ -128,11 +128,9 @@ bool datastore::insertSystrmErrorInfo(QString _systrmerror, QString _ip_address,
 	QString sql = "insert into system_error (error_information, ip_address, port_address, time) values ('" + _systrmerror + "','" + _ip_address + "','"  + QString::number(_port) + "','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
 	if (!query.exec(sql))
 	{
-		//data_base.close();
 		//m_mutex.unlock();
 		return false;
 	}
-	//data_base.close();
 	//m_mutex.unlock();
 	return true;
 }
@@ -144,11 +142,9 @@ bool datastore::execsql(QString _sql)
 	QSqlQuery query(data_base);
 	if (!query.exec(_sql))
 	{
-		//data_base.close();
 		//m_mutex.unlock();
 		return false;
 	}
-	//data_base.close();
 	//m_mutex.unlock();
 	return true;
 }
@@ -166,7 +162,7 @@ QString datastore::searchPatientDataName(QString _patientName)
 		sql = "select patient_ID,local_path,timer from v_search where patient_ID = " + _ID + " and hno = " + _ID;
 		if (!query.exec(sql))
 		{
-			//data_base.close();
+			
 			//m_mutex.unlock();
 			return patient_data_path;
 		}
@@ -176,7 +172,7 @@ QString datastore::searchPatientDataName(QString _patientName)
 		}
 		patient_data_path.remove(0,1);
 	}
-	//data_base.close();
+	
 	//m_mutex.unlock();
 	return patient_data_path;
 }
@@ -189,7 +185,7 @@ QStringList datastore::searchPatientID(QString _patientName)
 	QStringList patient_ID;
 	if (!query.exec(sql))
 	{
-		//data_base.close();
+		
 		//m_mutex.unlock();
 		return patient_ID;
 	}
@@ -197,7 +193,7 @@ QStringList datastore::searchPatientID(QString _patientName)
 	{
 		patient_ID.append(query.value(0).toString());
 	}
-	//data_base.close();
+	
 	//m_mutex.unlock();
 	return patient_ID;
 }
@@ -214,7 +210,7 @@ struct PATIENTDATA datastore::searchPatientData(QString _patientName)
 		sql = "select patient_ID,local_path,timer from v_search where patient_ID = " + _ID + " and hno = " + _ID;
 		if (!query.exec(sql))
 		{
-			//data_base.close();
+			
 			m_mutex.unlock();
 			return m_patientdata1;
 		}
