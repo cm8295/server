@@ -294,26 +294,6 @@ bool datastore::insertTestData(QString _tableName)
 
 bool datastore::testfun(QString _ssk)
 {
-	//QSqlDatabase data_base1;
-	//if(QSqlDatabase::contains("qt_sql_default_connection"))  
-	//	data_base1 = QSqlDatabase::database("qt_sql_default_connection");  
-	//else  
-	//	data_base1 = QSqlDatabase::addDatabase("QMYSQL");  
-	////data_base1 = QSqlDatabase::addDatabase("QMYSQL");
-	//data_base1.setHostName("localhost");
-	//data_base1.setPort(3306);
-	//data_base1.setDatabaseName("teeair");
-	//data_base1.setUserName("root");
-	//data_base1.setPassword("123456");
-	//if(!data_base1.open())
-	//{
-	//	qDebug()<<"数据库打开错误";
-	//	return false;
-	//}
-	if (!QSqlDatabase::contains("teeair"))
-	{
-		qDebug()<<"连接失败";
-	}
 	QSqlQuery query(data_base);
 	bool blexit = false;
 	QString sql = "insert into system_error (error_information, ip_address, port_address, time) values ('" + _ssk + "','0','0','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
