@@ -4,9 +4,10 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QMap>
+#include <QtConcurrentRun>
 #include "tcpthread.h"
-#include "connectsocket.h"
 
+using namespace QtConcurrent;
 class TcpServer : public QTcpServer
 {
 	Q_OBJECT
@@ -26,7 +27,6 @@ private:
 	int m_Descriptor;//网络断开标识 1、0
 	int m_threadNum;  //线程数
 	QMutex m_mutex;
-	//QTcpSocket *m_tcpsocket;
 };
 
 #endif // TCPSERVER_H

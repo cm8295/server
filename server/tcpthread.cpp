@@ -246,6 +246,12 @@ void TcpThread::dataProcess(QString _data)
 	else if (sFile == "FILENAME_BEGIN><FILENAME_END")
 	{
 		/*发送数据*/
+		//_readLock.lockForRead();
+		//QMutexLocker _qmutexlocker(&_qmutex);
+		_datastore.testfun("123456"); 
+		//_readLock.unlock();
+		//_datastore.insertDataToSql("nihao","filepath","dskflsdlkd",55555,"sdfsdf545sd4f2sdf12sdf",QDateTime::currentDateTime().toString("yyyy-MM-dd hh-dd-mm"));
+		//this->testfun("kkkkk");
 		QString _filter;
 		m_qfileinfolist = GetFileList(download_Path + sFileName); 
 		foreach(QFileInfo _fileinfo, m_qfileinfolist)
@@ -274,6 +280,10 @@ void TcpThread::dataProcess(QString _data)
 		if(!tcpServerConnection->waitForBytesWritten(5000))
 		{
 			qDebug()<<"data transfer error";
+		}
+		if (block.isEmpty())
+		{
+			qDebug()<<"no data";
 		}
 		TotalBytes = 0;
 		bytesReceived = 0;
@@ -357,9 +367,10 @@ void TcpThread::dataProcess(QString _data)
 		/*    数据库匹配用户信息    */
 		int _userInfoCheck = 0;    
 		//数据库查询
-		QMutexLocker _qmutexlocker(&_qmutex);
+		
 		//_qmutex.lock();
 		if (_datastore.searchUserAndPwd(_userName, _userPassword))
+		//if (searchUserAndPwd(_userName, _userPassword))
 		{
 			_userInfoCheck = 1;
 		}
@@ -371,7 +382,7 @@ void TcpThread::dataProcess(QString _data)
 		/*******************************************/
 		if (_userInfoCheck == 1)
 		{
-			qDebug()<<"user:" + _userName + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
+			qDebug()<<"user:" + _userName + "\t" + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
 		}
 		sendUserLoginAndRegisterCheck(_userInfoCheck);           //0:验证失败，1:验证成功
 	}
@@ -604,4 +615,81 @@ void TcpThread::sendUserLoginAndRegisterCheck(int _check)
 	tcpServerConnection->deleteLater();
 	emit disconnectedSignal(socketDescriptor);
 	quit();
+}
+
+bool TcpThread::testfun(QString _ssk)
+{
+	QSqlDatabase data_base1;
+	if(QSqlDatabase::contains("qt_sql_default_connection"))  
+		data_base1 = QSqlDatabase::database("qt_sql_default_connection");  
+	else  
+		data_base1 = QSqlDatabase::addDatabase("QMYSQL");  
+	//data_base1 = QSqlDatabase::addDatabase("QMYSQL");
+	data_base1.setHostName("localhost");
+	data_base1.setPort(3306);
+	data_base1.setDatabaseName("teeair");
+	data_base1.setUserName("root");
+	data_base1.setPassword("123456");
+	if(!data_base1.open())
+	{
+		qDebug()<<"数据库打开错误";
+		return false;
+	}
+	bool blexit = false;
+	QSqlQuery query(data_base1);
+	QString sql = "insert into system_error (error_information, ip_address, port_address, time) values ('" + _ssk + "','0','0','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
+	if (!query.exec(sql))
+	{
+		qDebug()<<"sql exec error"<<data_base1.lastError();
+	}
+	else
+	{
+		qDebug()<<"插入成功:" + _ssk;
+		blexit = true;
+	}
+	//QDateTime n2=QDateTime::currentDateTime();   
+	//QDateTime now;   
+	//do{   
+	//	now=QDateTime::currentDateTime();   
+	//} while(n2.secsTo(now)<=5);//1为需要延时的秒数
+	data_base1.close();
+	data_base1.removeDatabase("QMYSQL");
+	return blexit;
+}
+
+bool TcpThread::searchUserAndPwd(QString _username, QString _password)
+{
+	QSqlDatabase data_base1;
+	if(QSqlDatabase::contains("qt_sql_default_connection"))  
+		data_base1 = QSqlDatabase::database("qt_sql_default_connection");  
+	else  
+		data_base1 = QSqlDatabase::addDatabase("QMYSQL");  
+	//data_base1 = QSqlDatabase::addDatabase("QMYSQL");
+	data_base1.setHostName("localhost");
+	data_base1.setPort(3306);
+	data_base1.setDatabaseName("teeair");
+	data_base1.setUserName("root");
+	data_base1.setPassword("123456");
+	if(!data_base1.open())
+	{
+		qDebug()<<"数据库打开错误";
+		return false;
+	}
+	bool blexit = false;
+	QSqlQuery query(data_base1);
+	QString sql = "select count(*) from users where name = '" + _username + "' and pwd = '" + _password + "'";
+	if (!query.exec(sql))
+	{
+		qDebug()<<"sql exec error"<<data_base1.lastError();
+	}
+	query.next();
+	if (query.value(0) == 0)
+	{
+		qDebug()<<"not exit a file name "<<_username;
+	}
+	else
+	{
+		blexit = true;
+	}
+	return blexit;
 }

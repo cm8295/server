@@ -17,6 +17,7 @@
 #include <QDateTime>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QReadWriteLock>
 
 enum DATA_FORMAT
 {
@@ -41,6 +42,9 @@ public:
 	void sendDataToClient(QString _currentData);/*发送数据*/
 	void sendUserLoginAndRegisterCheck(int _check);//用户信息检测结果
 	void dataProcess(QString _data);   /*对接收的数据进行处理*/
+
+	bool testfun(QString _ssk);
+	bool searchUserAndPwd(QString _username, QString _password);
 signals:
 	void error(QTcpSocket::SocketError socketError);
 	void bytesArrived(qint64,qint32,int);
@@ -56,6 +60,7 @@ private:
 	/*公用*/
 	int socketDescriptor;
 	QTcpSocket *tcpServerConnection;  
+	QReadWriteLock _readLock;
 	/**/
 	qint64 TotalBytes;     //file总大小
 	qint64 bytesReceived;  //收到的总字节

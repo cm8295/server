@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <QMutex>
 #include <QSqlError>
+#include <QReadWriteLock>
 #define CURRENT_PATH "G:\\TEEData\\Huaxi\\"
 struct PATIENTDATA{
 	QString _patient_ID;   //病人id，住院号
@@ -31,10 +32,12 @@ public:
 	bool searchUserAndPwd(QString _username, QString _password);  //查询用户名和密码
 	PATIENTDATA searchPatientData(QString _patientName);   //搜索病例数据
 	bool insertTestData(QString _tableName);    //插入数据测试
+    bool testfun(QString _ssk);
 private:
 	QSqlDatabase data_base;
 	struct PATIENTDATA m_patientdata1;
 	//QString upload_AND_download_Path;
 	QMutex m_mutex;
+	QReadWriteLock m_readlock;
 };
 

@@ -58,6 +58,8 @@ bool datastore::dataBaseConnect()
 	}
 }
 
+
+
 QSqlDatabase datastore::sqlConnect()
 {
 	QSqlDatabase _database;
@@ -88,7 +90,7 @@ void datastore::dataBaseClose()
 
 bool datastore::insertDataToSql(QString _username, QString _server_path, QString _localfile,double _sieze, QString _md5, QString _timer)
 {
-	//m_mutex.lock();
+	m_mutex.lock();
 	//dataBaseConnect();
 	QSqlQuery query(data_base);
 	QString sql = "insert into medicaldata (username, server_path, local_path, size, md5, timer) values ('" + _username + "','" + _server_path + "','" + _localfile.replace("\\", "\\\\") + "','"  + QString::number(_sieze) + "','" + _md5 + "','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
@@ -96,10 +98,11 @@ bool datastore::insertDataToSql(QString _username, QString _server_path, QString
 	{
 		
 		//m_mutex.unlock();
+		qDebug()<<"database error"<<data_base.lastError();
 		return false;
 	}
-	
-	//m_mutex.unlock();
+	qDebug()<<"插入 medicaldata 数据成功";
+	m_mutex.unlock();
 	return true;
 }
 
@@ -247,11 +250,7 @@ bool datastore::searchUserAndPwd(QString _username, QString _password)
 	{
 		blexit = true;
 	}
-	if (!blexit)
-	{
-		return false;
-	}
-	return true;
+	return blexit;
 }
 
 bool datastore::insertTestData(QString _tableName)
@@ -291,4 +290,48 @@ bool datastore::insertTestData(QString _tableName)
 		}
 	}
 	return true;
+}
+
+bool datastore::testfun(QString _ssk)
+{
+	//QSqlDatabase data_base1;
+	//if(QSqlDatabase::contains("qt_sql_default_connection"))  
+	//	data_base1 = QSqlDatabase::database("qt_sql_default_connection");  
+	//else  
+	//	data_base1 = QSqlDatabase::addDatabase("QMYSQL");  
+	////data_base1 = QSqlDatabase::addDatabase("QMYSQL");
+	//data_base1.setHostName("localhost");
+	//data_base1.setPort(3306);
+	//data_base1.setDatabaseName("teeair");
+	//data_base1.setUserName("root");
+	//data_base1.setPassword("123456");
+	//if(!data_base1.open())
+	//{
+	//	qDebug()<<"数据库打开错误";
+	//	return false;
+	//}
+	m_readlock.lockForRead();
+	if (!QSqlDatabase::contains("teeair"))
+	{
+		qDebug()<<"连接失败";
+	}
+	QSqlQuery query(data_base);
+	bool blexit = false;
+	QString sql = "insert into system_error (error_information, ip_address, port_address, time) values ('" + _ssk + "','0','0','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
+	if (!query.exec(sql))
+	{
+		qDebug()<<"sql exec error"<<data_base.lastError();
+	}
+	else
+	{
+		qDebug()<<"插入成功:" + _ssk;
+		blexit = true;
+	}
+	QDateTime n2=QDateTime::currentDateTime();   
+	QDateTime now;   
+	do{   
+		now=QDateTime::currentDateTime();   
+	} while(n2.secsTo(now)<=1);//1为需要延时的秒数
+	m_readlock.unlock();
+	return blexit;
 }

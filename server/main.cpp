@@ -7,6 +7,7 @@
 #include <Windows.h>
 #include <DbgHelp.h>
 #include "datastore.h"
+
 #pragma comment( lib, "Dbghelp.lib" )
 struct PATIENTDATA1{/*病人信息结构体*/
 	QString _patient_ID;
@@ -22,13 +23,13 @@ QSqlDatabase data_base;
 */
 bool openServer()
 {
-	while (!tcpServer->isListening() && !tcpServer->listen(QHostAddress::Any,19845))
+	while (!tcpServer->isListening() && !tcpServer->listen(QHostAddress::Any,19846))
 	{
 		qDebug()<<tcpServer->errorString();
 		return false;
 	}
 	tcpServer->setMaxPendingConnections(100);
-	qDebug()<<"服务已经启动！"<<" 端口："<<19845;
+	qDebug()<<"服务已经启动！"<<" 端口："<<19846;
 	return true;
 }
 /**
