@@ -97,13 +97,13 @@ void TcpThread::receiveData()    //接收文件
 			{   
 				localFile->close();
 				QMutexLocker m_qmutexlocker(&_qmutex);
-				//_qmutex.lock();
+				m_mutexSql.lock();
 				if (!_datastore.insertDataToSql(_username, upload_AND_download_Path, 
 					upload_AND_download_Path +  m_serverPath, TotalBytes, FileDigest(upload_AND_download_Path + m_serverPath), "NULL"))
 				{
 					qDebug()<<"文件写入数据库失败！";
 				}
-				//_qmutex.unlock();
+				m_mutexSql.unlock();
 				qDebug()<<sFileName;
 				TotalBytes = 0;
 				bytesReceived = 0;
@@ -246,12 +246,9 @@ void TcpThread::dataProcess(QString _data)
 	else if (sFile == "FILENAME_BEGIN><FILENAME_END")
 	{
 		/*发送数据*/
-		//_readLock.lockForRead();
-		//QMutexLocker _qmutexlocker(&_qmutex);
+		m_mutexSql.lock();
 		_datastore.testfun("123456"); 
-		//_readLock.unlock();
-		//_datastore.insertDataToSql("nihao","filepath","dskflsdlkd",55555,"sdfsdf545sd4f2sdf12sdf",QDateTime::currentDateTime().toString("yyyy-MM-dd hh-dd-mm"));
-		//this->testfun("kkkkk");
+		m_mutexSql.unlock();
 		QString _filter;
 		m_qfileinfolist = GetFileList(download_Path + sFileName); 
 		foreach(QFileInfo _fileinfo, m_qfileinfolist)
@@ -310,10 +307,10 @@ void TcpThread::dataProcess(QString _data)
 	{
 		try
 		{
-			_qmutex.lock();
+			m_mutexSql.lock();
 			bool _blisfeedback = _datastore.insertUserFeedback(m_serverPath.left(m_serverPath.indexOf('&')), m_serverPath, 
 				tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
-			_qmutex.unlock();
+			m_mutexSql.unlock();
 			if (!_blisfeedback)
 			{
 				throw QString("写数据库错误");
@@ -368,9 +365,8 @@ void TcpThread::dataProcess(QString _data)
 		int _userInfoCheck = 0;    
 		//数据库查询
 		
-		//_qmutex.lock();
+		m_mutexSql.lock();
 		if (_datastore.searchUserAndPwd(_userName, _userPassword))
-		//if (searchUserAndPwd(_userName, _userPassword))
 		{
 			_userInfoCheck = 1;
 		}
@@ -378,7 +374,7 @@ void TcpThread::dataProcess(QString _data)
 		{
 			_userInfoCheck = 0;
 		}
-		//_qmutex.unlock();
+		m_mutexSql.unlock();
 		/*******************************************/
 		if (_userInfoCheck == 1)
 		{
@@ -444,9 +440,9 @@ void TcpThread::updateClientProgress(qint64 numBytes)
 	}
 	catch(...)
 	{
-		_qmutex.lock();
+		m_mutexSql.lock();
 		bool _blisfeedback = _datastore.insertSystrmErrorInfo("写数据错误", tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
-		_qmutex.unlock();
+		m_mutexSql.unlock();
 		if(blDownLoadFileOpen)
 		{
 			localFile->deleteLater();
@@ -582,7 +578,9 @@ void TcpThread::sendDataToClient(QString _currentData)
 
 QString TcpThread::search_List_End(QString _patient_Name)
 {
+	m_mutexSql.lock();
 	m_patientdata3 = _datastore.searchPatientData(_patient_Name);
+	m_mutexSql.unlock();
 	QString _searchData = m_patientdata3._patient_ID + "|" + m_patientdata3._local_path + "|" + m_patientdata3._timer;   
 	//qDebug()<<_searchData;
 	return _searchData;

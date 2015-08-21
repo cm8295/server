@@ -76,6 +76,9 @@
     <ClCompile Include="GeneratedFiles\Release\moc_tcpthread.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="CommonInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
@@ -99,6 +102,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="errorInfoStore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

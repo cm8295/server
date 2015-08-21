@@ -27,6 +27,8 @@ private:
 	int m_Descriptor;//网络断开标识 1、0
 	int m_threadNum;  //线程数
 	QMutex m_mutex;
+public:
+	
 };
 
 #endif // TCPSERVER_H

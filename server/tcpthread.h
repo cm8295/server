@@ -18,7 +18,8 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QReadWriteLock>
-
+#include "CommonInfo.h"
+class CommonInfo;
 enum DATA_FORMAT
 {
 	DOWN_FILEDOWN_END = 1,

@@ -310,7 +310,6 @@ bool datastore::testfun(QString _ssk)
 	//	qDebug()<<"数据库打开错误";
 	//	return false;
 	//}
-	m_readlock.lockForRead();
 	if (!QSqlDatabase::contains("teeair"))
 	{
 		qDebug()<<"连接失败";
@@ -327,11 +326,10 @@ bool datastore::testfun(QString _ssk)
 		qDebug()<<"插入成功:" + _ssk;
 		blexit = true;
 	}
-	QDateTime n2=QDateTime::currentDateTime();   
-	QDateTime now;   
-	do{   
-		now=QDateTime::currentDateTime();   
-	} while(n2.secsTo(now)<=1);//1为需要延时的秒数
-	m_readlock.unlock();
+	//QDateTime n2=QDateTime::currentDateTime();   
+	//QDateTime now;   
+	//do{   
+	//	now=QDateTime::currentDateTime();   
+	//} while(n2.secsTo(now)<=1);//1为需要延时的秒数
 	return blexit;
 }
