@@ -101,7 +101,7 @@ bool datastore::insertDataToSql(QString _username, QString _server_path, QString
 		qDebug()<<"database error"<<data_base.lastError();
 		return false;
 	}
-	qDebug()<<"插入 medicaldata 数据成功";
+	qDebug()<<"插入" + _localfile + "成功";
 	m_mutex.unlock();
 	return true;
 }

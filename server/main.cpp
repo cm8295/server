@@ -9,7 +9,7 @@
 #include "datastore.h"
 
 #pragma comment( lib, "Dbghelp.lib" )
-struct PATIENTDATA1{/*病人信息结构体*/
+struct PATIENTDATA1{/*病人信息*/
 	QString _patient_ID;
 	QString _local_path;
 	QString _timer;
@@ -23,13 +23,13 @@ QSqlDatabase data_base;
 */
 bool openServer()
 {
-	while (!tcpServer->isListening() && !tcpServer->listen(QHostAddress::Any,19846))
+	while (!tcpServer->isListening() && !tcpServer->listen(QHostAddress::Any,19845))
 	{
 		qDebug()<<tcpServer->errorString();
 		return false;
 	}
 	tcpServer->setMaxPendingConnections(100);
-	qDebug()<<"服务已经启动！"<<" 端口："<<19846;
+	qDebug()<<"服务已经启动！"<<" 端口："<<19845;
 	return true;
 }
 /**
@@ -69,15 +69,13 @@ int main(int argc, char *argv[])
 	QTextCodec::setCodecForCStrings(codec); 
 	//设置传给tr函数时的默认字符串编码
 	QTextCodec::setCodecForTr(codec);
-	//SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);//注册异常捕获函数
-	//datastore *_datastore = new datastore(NULL);
+	SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);//注册异常捕获函数
 	datastore _datastore;
 	tcpServer = new TcpServer(NULL);
 	openServer();
 	if(_datastore.dataBaseConnect())
 	{
 		qDebug()<<"数据库链接成功";
-		//_datastore.dataBaseClose();
 	}
 	else
 	{

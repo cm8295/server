@@ -1,4 +1,5 @@
 #include "tcpthread.h"
+
 TcpThread::TcpThread(int socketDescriptor)
 	: QThread(),socketDescriptor(socketDescriptor)
 {
@@ -15,8 +16,7 @@ void TcpThread::run()
 	* 内存泄漏检查
 	*/
 	//_CrtDumpMemoryLeaks();
-	//
-	
+	//	
 	TotalBytes = 0;  
 	bytesReceived = 0;  
 	fileNameSize = 0;  
@@ -35,7 +35,6 @@ void TcpThread::run()
 	connect(tcpServerConnection, SIGNAL(readyRead()), this, SLOT(receiveData()),Qt::DirectConnection);
 	connect(tcpServerConnection, SIGNAL(error(QAbstractSocket::SocketError)), this,SLOT(displayError(QAbstractSocket::SocketError)), Qt::DirectConnection); 
 	connect(tcpServerConnection, SIGNAL(connectionClosed()), this, SLOT(connectError()), Qt::DirectConnection);
-
 	exec();
 }
 
@@ -49,7 +48,6 @@ void TcpThread::connectError()
 		localFile->close();
 		localFile->remove(m_filePath + sFileName);
 		localFile->deleteLater();
-		delete localFile;
 	}
 	qDebug()<<"connectError";
 	tcpServerConnection->deleteLater();
@@ -96,15 +94,14 @@ void TcpThread::receiveData()    //接收文件
 			if(bytesReceived == TotalBytes)  
 			{   
 				localFile->close();
-				QMutexLocker m_qmutexlocker(&_qmutex);
 				m_mutexSql.lock();
-				if (!_datastore.insertDataToSql(_username, upload_AND_download_Path, 
-					upload_AND_download_Path +  m_serverPath, TotalBytes, FileDigest(upload_AND_download_Path + m_serverPath), "NULL"))
+				if (!_datastore.insertDataToSql(_username, m_filePath.replace('\\','/') + _currentFilename.replace('\\','/').left(_currentFilename.lastIndexOf('/')), 
+					m_filePath + _currentFilename, TotalBytes, FileDigest(m_filePath + _currentFilename), "NULL"))
 				{
-					qDebug()<<"文件写入数据库失败！";
+					qDebug()<<_currentFilename + "路径写入数据库失败！";
 				}
 				m_mutexSql.unlock();
-				qDebug()<<sFileName;
+				//qDebug()<<sFileName;
 				TotalBytes = 0;
 				bytesReceived = 0;
 				fileNameSize = 0;
@@ -142,13 +139,13 @@ void TcpThread::dataProcess(QString _data)
 	sFileName = fileName.right(fileName.size() - fileName.lastIndexOf('>') - 1);
 	sFileName = sFileName.right(fileName.size() - fileName.lastIndexOf('/') - 1);
 	sFileName = sFileName.left(sFileName.indexOf('<'));
-	m_serverPath = fileName.right(fileName.size() - fileName.indexOf('>') - 1);
+	m_serverPath = fileName.right(fileName.size() - fileName.indexOf('>') - 1);//m_serverPath  传输真实数据
 	m_serverPath = m_serverPath.left(m_serverPath.indexOf('<'));
 	/*下载文件*/
 	if(sFile == "DOWN_FILE><DOWN_END")
 	{
-		//遍历文件夹
-		path = download_Path + sFileName.replace("/", "\\"); 
+		//查找服务器该文件是否存在
+		path = upload_AND_download_Path + m_serverPath.replace("/", "\\"); 
 		dir.setFile(path);
 		bool blInfo = false;
 		if(dir.exists())
@@ -246,11 +243,14 @@ void TcpThread::dataProcess(QString _data)
 	else if (sFile == "FILENAME_BEGIN><FILENAME_END")
 	{
 		/*发送数据*/
-		m_mutexSql.lock();
-		_datastore.testfun("123456"); 
-		m_mutexSql.unlock();
+		/**
+		*  测试
+		*/
+		//m_mutexSql.lock();
+		//_datastore.testfun("123456"); 
+		//m_mutexSql.unlock();
 		QString _filter;
-		m_qfileinfolist = GetFileList(download_Path + sFileName); 
+		m_qfileinfolist = GetFileList(upload_AND_download_Path + m_serverPath); 
 		foreach(QFileInfo _fileinfo, m_qfileinfolist)
 		{
 			_filter = _fileinfo.completeSuffix();
@@ -260,7 +260,7 @@ void TcpThread::dataProcess(QString _data)
 			}
 			if (!sFileName.isEmpty())
 			{
-				serverData.append(_fileinfo.absoluteFilePath().replace('/','\\').remove(download_Path + sFileName.left(sFileName.indexOf('\\') + 1)) + "|");
+				serverData.append(_fileinfo.absoluteFilePath().replace('/','\\').remove(upload_AND_download_Path) + "|");
 			}
 		}
 		serverData = serverData.left(serverData.length() - 1);
@@ -278,9 +278,9 @@ void TcpThread::dataProcess(QString _data)
 		{
 			qDebug()<<"data transfer error";
 		}
-		if (block.isEmpty())
+		if (serverData != "")
 		{
-			qDebug()<<"no data";
+			qDebug()<<serverData;
 		}
 		TotalBytes = 0;
 		bytesReceived = 0;
@@ -295,10 +295,6 @@ void TcpThread::dataProcess(QString _data)
 		_filter.clear();
 		tcpServerConnection->disconnect();
 		tcpServerConnection->deleteLater();
-		if (serverData != "")
-		{
-			qDebug()<<serverData;
-		}
 		emit disconnectedSignal(socketDescriptor);
 		quit();
 	}
@@ -342,7 +338,6 @@ void TcpThread::dataProcess(QString _data)
 			tcpServerConnection->deleteLater();
 			emit disconnectedSignal(socketDescriptor);
 			quit();
-			//wait();
 		}
 	}
 	/*病例数据搜索*/
@@ -350,6 +345,7 @@ void TcpThread::dataProcess(QString _data)
 	{
 		sendDataToClient(search_List_End(m_serverPath));
 		emit disconnectedSignal(socketDescriptor);
+		quit();
 	}
 	/*用户登陆验证*/
 	else if (sFile == ".2.><.2.") 
@@ -363,8 +359,7 @@ void TcpThread::dataProcess(QString _data)
 		}
 		/*    数据库匹配用户信息    */
 		int _userInfoCheck = 0;    
-		//数据库查询
-		
+		//查询数据库验证用户名和密码
 		m_mutexSql.lock();
 		if (_datastore.searchUserAndPwd(_userName, _userPassword))
 		{
@@ -381,6 +376,8 @@ void TcpThread::dataProcess(QString _data)
 			qDebug()<<"user:" + _userName + "\t" + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
 		}
 		sendUserLoginAndRegisterCheck(_userInfoCheck);           //0:验证失败，1:验证成功
+		emit disconnectedSignal(socketDescriptor);
+		quit();
 	}
 	/*非法连接*/
 	else
@@ -415,7 +412,7 @@ void TcpThread::updateClientProgress(qint64 numBytes)
 		}  
 		if(bytesWritten == TotalBytes)
 		{
-			qDebug()<<"download ok";
+			qDebug()<<path + "\tdownload ok";
 			localFile->close();
 			TotalBytes = 0;
 			bytesReceived = 0;
@@ -432,8 +429,6 @@ void TcpThread::updateClientProgress(qint64 numBytes)
 			tcpServerConnection->disconnectFromHost();
 			tcpServerConnection->deleteLater();
 			localFile->deleteLater();
-			delete tcpServerConnection;
-			delete localFile;
 			emit disconnectedSignal(socketDescriptor);
 			quit();
 		}
@@ -482,18 +477,15 @@ void TcpThread::displayError(QAbstractSocket::SocketError socketError)
 		break;
 	default: statestring="unknown state";
 	}
-	qDebug()<<tcpServerConnection->peerAddress().toString() + tcpServerConnection->peerName()
+	qDebug()<<"异常\t" + tcpServerConnection->peerAddress().toString() + tcpServerConnection->peerName()
 		<<tcpServerConnection->errorString() + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
 	//if(socketError == QTcpSocket::RemoteHostClosedError)  
 	//{
 	//	//return; 
 	//}
-
 	//_qmutex.lock();
 	//bool _blisfeedback = _datastore->insertSystrmErrorInfo("写数据错误", tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
 	//_qmutex.unlock();
-	
-	
 	if(blFileOpen)
 	{
 		localFile->close();
@@ -546,9 +538,6 @@ QString TcpThread::FileDigest(QString FilePath)   //MD5码
 
 void TcpThread::sendDataToClient(QString _currentData)
 {
-	//std::string str1 = _currentData.toStdString();
-	//const char * ch = str1.c_str();
-	//tcpServerConnection->write(ch);
 	QDataStream out(&block,QIODevice::WriteOnly);
 	out.setVersion(QDataStream::Qt_4_7);
 	out<<qint64(0)<<qint64(0)<<_currentData;
@@ -556,7 +545,7 @@ void TcpThread::sendDataToClient(QString _currentData)
 	out.device()->seek(0);
 	out<<TotalBytes<<qint64(block.size() - sizeof(qint64)*2);
 	tcpServerConnection->write(block);
-	if(!tcpServerConnection->waitForBytesWritten(5000))
+	if(!tcpServerConnection->waitForBytesWritten(10000))
 	{
 	    qDebug()<<"data transfer error";
 	}
@@ -573,7 +562,6 @@ void TcpThread::sendDataToClient(QString _currentData)
 	tcpServerConnection->disconnect();
 	tcpServerConnection->disconnectFromHost();
 	tcpServerConnection->deleteLater();
-	quit();
 }
 
 QString TcpThread::search_List_End(QString _patient_Name)
@@ -611,83 +599,5 @@ void TcpThread::sendUserLoginAndRegisterCheck(int _check)
 	m_serverPath.clear();
 	tcpServerConnection->disconnect();
 	tcpServerConnection->deleteLater();
-	emit disconnectedSignal(socketDescriptor);
-	quit();
-}
-
-bool TcpThread::testfun(QString _ssk)
-{
-	QSqlDatabase data_base1;
-	if(QSqlDatabase::contains("qt_sql_default_connection"))  
-		data_base1 = QSqlDatabase::database("qt_sql_default_connection");  
-	else  
-		data_base1 = QSqlDatabase::addDatabase("QMYSQL");  
-	//data_base1 = QSqlDatabase::addDatabase("QMYSQL");
-	data_base1.setHostName("localhost");
-	data_base1.setPort(3306);
-	data_base1.setDatabaseName("teeair");
-	data_base1.setUserName("root");
-	data_base1.setPassword("123456");
-	if(!data_base1.open())
-	{
-		qDebug()<<"数据库打开错误";
-		return false;
-	}
-	bool blexit = false;
-	QSqlQuery query(data_base1);
-	QString sql = "insert into system_error (error_information, ip_address, port_address, time) values ('" + _ssk + "','0','0','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
-	if (!query.exec(sql))
-	{
-		qDebug()<<"sql exec error"<<data_base1.lastError();
-	}
-	else
-	{
-		qDebug()<<"插入成功:" + _ssk;
-		blexit = true;
-	}
-	//QDateTime n2=QDateTime::currentDateTime();   
-	//QDateTime now;   
-	//do{   
-	//	now=QDateTime::currentDateTime();   
-	//} while(n2.secsTo(now)<=5);//1为需要延时的秒数
-	data_base1.close();
-	data_base1.removeDatabase("QMYSQL");
-	return blexit;
-}
-
-bool TcpThread::searchUserAndPwd(QString _username, QString _password)
-{
-	QSqlDatabase data_base1;
-	if(QSqlDatabase::contains("qt_sql_default_connection"))  
-		data_base1 = QSqlDatabase::database("qt_sql_default_connection");  
-	else  
-		data_base1 = QSqlDatabase::addDatabase("QMYSQL");  
-	//data_base1 = QSqlDatabase::addDatabase("QMYSQL");
-	data_base1.setHostName("localhost");
-	data_base1.setPort(3306);
-	data_base1.setDatabaseName("teeair");
-	data_base1.setUserName("root");
-	data_base1.setPassword("123456");
-	if(!data_base1.open())
-	{
-		qDebug()<<"数据库打开错误";
-		return false;
-	}
-	bool blexit = false;
-	QSqlQuery query(data_base1);
-	QString sql = "select count(*) from users where name = '" + _username + "' and pwd = '" + _password + "'";
-	if (!query.exec(sql))
-	{
-		qDebug()<<"sql exec error"<<data_base1.lastError();
-	}
-	query.next();
-	if (query.value(0) == 0)
-	{
-		qDebug()<<"not exit a file name "<<_username;
-	}
-	else
-	{
-		blexit = true;
-	}
-	return blexit;
+	
 }
