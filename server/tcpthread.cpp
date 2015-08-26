@@ -16,7 +16,21 @@ void TcpThread::run()
 	* 内存泄漏检查
 	*/
 	//_CrtDumpMemoryLeaks();
-	//	
+	//
+	/**
+	*  数据库连接池测试
+	*/
+	//// 从数据库连接池里取得连接
+	//QSqlDatabase db = ConnectionPool::openConnection();
+	////qDebug() << "In thread run():" << db.connectionName();
+	//QSqlQuery query(db);
+	//query.exec("SELECT pwd FROM users where id=1");
+	//while (query.next()) {
+	//	qDebug() << query.value(0).toString();
+	//}
+	//// 连接使用完后需要释放回数据库连接池
+	//ConnectionPool::closeConnection(db);
+	//
 	TotalBytes = 0;  
 	bytesReceived = 0;  
 	fileNameSize = 0;  
@@ -94,13 +108,14 @@ void TcpThread::receiveData()    //接收文件
 			if(bytesReceived == TotalBytes)  
 			{   
 				localFile->close();
-				m_mutexSql.lock();
-				if (!_datastore.insertDataToSql(_username, m_filePath.replace('\\','/') + _currentFilename.replace('\\','/').left(_currentFilename.lastIndexOf('/')), 
+				//m_mutexSql.lock();
+				//QMutexLocker _locker(&m_mutexSql);
+				if (!insertDataToSql(_username, m_filePath.replace('\\','/') + _currentFilename.replace('\\','/').left(_currentFilename.lastIndexOf('/')), 
 					m_filePath + _currentFilename, TotalBytes, FileDigest(m_filePath + _currentFilename), "NULL"))
 				{
 					qDebug()<<_currentFilename + "路径写入数据库失败！";
 				}
-				m_mutexSql.unlock();
+				//m_mutexSql.unlock();
 				//qDebug()<<sFileName;
 				TotalBytes = 0;
 				bytesReceived = 0;
@@ -146,6 +161,7 @@ void TcpThread::dataProcess(QString _data)
 	{
 		//查找服务器该文件是否存在
 		path = upload_AND_download_Path + m_serverPath.replace("/", "\\"); 
+		qDebug()<<"path:"<<path;
 		dir.setFile(path);
 		bool blInfo = false;
 		if(dir.exists())
@@ -278,10 +294,10 @@ void TcpThread::dataProcess(QString _data)
 		{
 			qDebug()<<"data transfer error";
 		}
-		if (serverData != "")
+		/*if (serverData != "")
 		{
-			qDebug()<<serverData;
-		}
+		qDebug()<<serverData;
+		}*/
 		TotalBytes = 0;
 		bytesReceived = 0;
 		fileNameSize = 0;
@@ -304,7 +320,7 @@ void TcpThread::dataProcess(QString _data)
 		try
 		{
 			m_mutexSql.lock();
-			bool _blisfeedback = _datastore.insertUserFeedback(m_serverPath.left(m_serverPath.indexOf('&')), m_serverPath, 
+			bool _blisfeedback = insertUserFeedback(m_serverPath.left(m_serverPath.indexOf('&')), m_serverPath, 
 				tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
 			m_mutexSql.unlock();
 			if (!_blisfeedback)
@@ -360,8 +376,8 @@ void TcpThread::dataProcess(QString _data)
 		/*    数据库匹配用户信息    */
 		int _userInfoCheck = 0;    
 		//查询数据库验证用户名和密码
-		m_mutexSql.lock();
-		if (_datastore.searchUserAndPwd(_userName, _userPassword))
+		//m_mutexSql.lock();
+		if (searchUserAndPwd(_userName, _userPassword))
 		{
 			_userInfoCheck = 1;
 		}
@@ -369,7 +385,7 @@ void TcpThread::dataProcess(QString _data)
 		{
 			_userInfoCheck = 0;
 		}
-		m_mutexSql.unlock();
+		//m_mutexSql.unlock();
 		/*******************************************/
 		if (_userInfoCheck == 1)
 		{
@@ -435,9 +451,7 @@ void TcpThread::updateClientProgress(qint64 numBytes)
 	}
 	catch(...)
 	{
-		m_mutexSql.lock();
-		bool _blisfeedback = _datastore.insertSystrmErrorInfo("写数据错误", tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
-		m_mutexSql.unlock();
+		bool _blisfeedback = insertSystrmErrorInfo("写数据错误", tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
 		if(blDownLoadFileOpen)
 		{
 			localFile->deleteLater();
@@ -477,8 +491,8 @@ void TcpThread::displayError(QAbstractSocket::SocketError socketError)
 		break;
 	default: statestring="unknown state";
 	}
-	qDebug()<<"异常\t" + tcpServerConnection->peerAddress().toString() + tcpServerConnection->peerName()
-		<<tcpServerConnection->errorString() + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
+	qDebug()<<"异常\t" + tcpServerConnection->peerAddress().toString() + "\t" + tcpServerConnection->peerName() + "\t" +
+		tcpServerConnection->errorString() + "\t" + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
 	//if(socketError == QTcpSocket::RemoteHostClosedError)  
 	//{
 	//	//return; 
@@ -566,12 +580,109 @@ void TcpThread::sendDataToClient(QString _currentData)
 
 QString TcpThread::search_List_End(QString _patient_Name)
 {
-	m_mutexSql.lock();
-	m_patientdata3 = _datastore.searchPatientData(_patient_Name);
-	m_mutexSql.unlock();
-	QString _searchData = m_patientdata3._patient_ID + "|" + m_patientdata3._local_path + "|" + m_patientdata3._timer;   
+	//m_mutexSql.lock();
+	//m_patientdata3 = searchPatientData(_patient_Name);
+	//m_mutexSql.unlock();
+	QString _searchData;
+	//_searchData = m_patientdata3._patient_ID + "|" + m_patientdata3._local_path + "|" + m_patientdata3._timer;   
 	//qDebug()<<_searchData;
 	return _searchData;
+}
+
+bool TcpThread::insertDataToSql(QString _username, QString _server_path, QString _localfile,double _sieze, QString _md5, QString _timer)
+{
+	bool blexit = true;
+	QSqlDatabase db = ConnectionPool::openConnection();
+	QSqlQuery query(db);
+	QString sql = "insert into medicaldata (username, server_path, local_path, size, md5, timer) values ('" + _username + "','" + _server_path + "','" + _localfile.replace("\\", "\\\\") + "','"  + QString::number(_sieze) + "','" + _md5 + "','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
+	if(!query.exec(sql))
+	{
+		qDebug()<<"sql exec error " + db.connectionName()<< data_base.lastError();
+		blexit = false;
+	}
+	ConnectionPool::closeConnection(db);
+	if (blexit)
+	{
+		qDebug()<<"插入" + _localfile + "成功";
+	}
+	return blexit;
+}
+
+bool TcpThread::insertUserFeedback(QString _user, QString _feedback, QString _ip_address, int _port)
+{
+	bool blexit = true;
+	QSqlDatabase db = ConnectionPool::openConnection();
+	QSqlQuery query(db);
+	QString sql = "insert into user_feedback (user, feedback, ip_address, port, time) values ('" + _user + "','" + _feedback + "','" + _ip_address + "','"  + QString::number(_port) + "','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
+	if (!query.exec(sql))
+	{
+		qDebug()<<data_base.lastError();
+		blexit = false;
+		qDebug()<<"用户反馈提交失败！";
+	}
+	ConnectionPool::closeConnection(db);
+	if (blexit)
+	{
+		qDebug()<<_user + "反馈！";
+	}
+	return true;
+}
+
+bool TcpThread::searchUserAndPwd(QString _username, QString _password)
+{
+	bool blexit = false;
+	QSqlDatabase db = ConnectionPool::openConnection();
+	QSqlQuery query(db);
+	QString sql = "select count(*) from users where name = '" + _username + "' and pwd = '" + _password + "'";
+	if (!query.exec(sql))
+	{
+		qDebug()<<"sql exec error"<<data_base.lastError();
+	}
+	query.next();
+	if (query.value(0) == 0)
+	{
+		qDebug()<<"No user:"<<_username;
+	}
+	else
+	{
+		blexit = true;
+	}
+	ConnectionPool::closeConnection(db);
+	return blexit;
+}
+
+QString TcpThread::searchInfo(QString _keyWord)
+{
+	QSqlDatabase db = ConnectionPool::openConnection();
+	QSqlQuery query(db);
+	//QString sql = "select path from case_patient where patient_id = (select hno from info where preope like '%" + _keyWord + "%')";
+	QString sql = "SELECT c.patient_id, c.path FROM case_patient c WHERE c.patient_id IN (SELECT i.hno FROM info i WHERE i.preope LIKE '%" + _keyWord + "%')";
+	if (!query.exec(sql))
+	{
+		qDebug()<<"sql exec error " + db.connectionName();
+	}
+	QString _result;
+	while(query.next())
+	{
+		_result += "?" + query.value(1).toString();
+	}
+	_result = _result.remove(0,1);
+	ConnectionPool::closeConnection(db);
+	return _result;
+}
+
+bool TcpThread::insertSystrmErrorInfo(QString _systrmerror, QString _ip_address, int _port)
+{
+	bool blexit = true;
+	QSqlDatabase db = ConnectionPool::openConnection();
+	QSqlQuery query(db);
+	QString sql = "insert into system_error (error_information, ip_address, port_address, time) values ('" + _systrmerror + "','" + _ip_address + "','"  + QString::number(_port) + "','" + QDateTime::currentDateTime().toString("yyyyMMddhhmmss") + "')";
+	if (!query.exec(sql))
+	{
+		blexit = false;
+	}
+	ConnectionPool::closeConnection(db);
+	return blexit;
 }
 
 void TcpThread::sendUserLoginAndRegisterCheck(int _check)

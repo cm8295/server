@@ -58,8 +58,6 @@ bool datastore::dataBaseConnect()
 	}
 }
 
-
-
 QSqlDatabase datastore::sqlConnect()
 {
 	QSqlDatabase _database;
@@ -188,7 +186,6 @@ QStringList datastore::searchPatientID(QString _patientName)
 	QStringList patient_ID;
 	if (!query.exec(sql))
 	{
-		
 		//m_mutex.unlock();
 		return patient_ID;
 	}
@@ -213,8 +210,7 @@ struct PATIENTDATA datastore::searchPatientData(QString _patientName)
 		sql = "select patient_ID,local_path,timer from v_search where patient_ID = " + _ID + " and hno = " + _ID;
 		if (!query.exec(sql))
 		{
-			
-			m_mutex.unlock();
+			//m_mutex.unlock();
 			return m_patientdata1;
 		}
 		while(query.next())
@@ -244,13 +240,32 @@ bool datastore::searchUserAndPwd(QString _username, QString _password)
 	query.next();
 	if (query.value(0) == 0)
 	{
-		qDebug()<<"not exit a file name "<<_username;
+		qDebug()<<"No user:"<<_username;
 	}
 	else
 	{
 		blexit = true;
 	}
 	return blexit;
+}
+
+QString datastore::searchInfo(QString _keyWord)
+{
+	QSqlQuery query(data_base);
+	//QString sql = "select path from case_patient where patient_id = (select hno from info where preope like '%" + _keyWord + "%')";
+	QString sql = "SELECT c.patient_id, c.path FROM case_patient c WHERE c.patient_id IN (SELECT i.hno FROM info i WHERE i.preope LIKE '%" + _keyWord + "%')";
+	if (!query.exec(sql))
+	{
+		return NULL;
+	}
+	QString _result;
+	while(query.next())
+	{
+		_result += "?" + query.value(1).toString();
+	}
+	_result = _result.remove(0,1);
+	qDebug()<<_result;
+	return _result;
 }
 
 bool datastore::insertTestData(QString _tableName)

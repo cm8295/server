@@ -28,7 +28,7 @@ bool openServer()
 		qDebug()<<tcpServer->errorString();
 		return false;
 	}
-	tcpServer->setMaxPendingConnections(100);
+	//tcpServer->setMaxPendingConnections(100);
 	qDebug()<<"服务已经启动！"<<" 端口："<<19845;
 	return true;
 }
@@ -70,17 +70,22 @@ int main(int argc, char *argv[])
 	//设置传给tr函数时的默认字符串编码
 	QTextCodec::setCodecForTr(codec);
 	SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);//注册异常捕获函数
-	datastore _datastore;
+	//datastore _datastore;
 	tcpServer = new TcpServer(NULL);
 	openServer();
-	if(_datastore.dataBaseConnect())
+	/*if(_datastore.dataBaseConnect())
 	{
-		qDebug()<<"数据库链接成功";
+	qDebug()<<"数据库链接成功";
 	}
 	else
 	{
-		qDebug()<<"数据库链接失败";
-	}
+	qDebug()<<"数据库链接失败";
+	}*/
+	/*for (int i = 0; i < 100; ++i) {
+	TcpThread *thread = new TcpThread(55);
+	thread->start();
+	}*/
+	//_datastore.searchInfo("二尖瓣");
 	return a.exec();
 }
 

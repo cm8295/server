@@ -78,6 +78,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CommonInfo.cpp" />
+    <ClCompile Include="ConnectionPool.cpp" />
     <ClCompile Include="connectsocket.cpp" />
     <ClCompile Include="datachange.cpp" />
     <ClCompile Include="datastore.cpp" />
@@ -139,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonInfo.h" />
+    <ClInclude Include="ConnectionPool.h" />
     <ClInclude Include="datastore.h" />
     <ClInclude Include="errorInfoStore.h" />
     <CustomBuild Include="tcpthread.h">

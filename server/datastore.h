@@ -27,16 +27,17 @@ public:
 	bool insertUserFeedback(QString _user, QString _feedback, QString _ip_address, int _port);
 	bool insertSystrmErrorInfo(QString _systrmerror, QString _ip_address, int _port);
 	QString searchPatientDataName(QString _patientName);//在数据库中查询病例数据
+	QString searchInfo(QString _keyWord);                //关键字查询
 	QStringList searchPatientID(QString _patientName);   //获取满足条件的病人住院号
 	QSqlDatabase getdatabase();
 	bool searchUserAndPwd(QString _username, QString _password);  //查询用户名和密码
 	PATIENTDATA searchPatientData(QString _patientName);   //搜索病例数据
 	bool insertTestData(QString _tableName);    //插入数据测试
     bool testfun(QString _ssk);
+
 private:
 	QSqlDatabase data_base;
 	struct PATIENTDATA m_patientdata1;
-	//QString upload_AND_download_Path;
 	QMutex m_mutex;
 	QReadWriteLock m_readlock;
 };

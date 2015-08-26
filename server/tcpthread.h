@@ -10,7 +10,7 @@
 #include <QtNetwork/QHostAddress>
 #include "tcpserver.h"
 #include "datachange.h"
-#include "datastore.h"
+//#include "datastore.h"
 #include <QtSql/QSqlDatabase>
 #include <QtXml/QtXml> 
 #include <QDomDocument>  
@@ -19,7 +19,13 @@
 #include <QMutexLocker>
 #include <QReadWriteLock>
 #include "CommonInfo.h"
+#include "ConnectionPool.h"
 class CommonInfo;
+//struct PATIENTDATA{
+//	QString _patient_ID;   //病人id，住院号
+//	QString _local_path;   //病例图像在本地路径
+//	QString _timer;       //图像传输的时间
+//};
 enum DATA_FORMAT
 {
 	DOWN_FILEDOWN_END = 1,
@@ -43,6 +49,16 @@ public:
 	void sendDataToClient(QString _currentData);/*发送数据*/
 	void sendUserLoginAndRegisterCheck(int _check);//用户信息检测结果
 	void dataProcess(QString _data);   /*对接收的数据进行处理*/
+	/*sql*/
+	bool insertDataToSql(QString _username, QString _server_path, QString _localfile,double _sieze, QString _md5, QString _timer);
+	bool insertUserFeedback(QString _user, QString _feedback, QString _ip_address, int _port);
+	bool insertSystrmErrorInfo(QString _systrmerror, QString _ip_address, int _port);
+	QString searchPatientDataName(QString _patientName);//在数据库中查询病例数据
+	QString searchInfo(QString _keyWord);                //关键字查询
+	QStringList searchPatientID(QString _patientName);   //获取满足条件的病人住院号
+	bool searchUserAndPwd(QString _username, QString _password);  //查询用户名和密码
+	//PATIENTDATA searchPatientData(QString _patientName);   //搜索病例数据
+	bool insertTestData(QString _tableName);    //插入数据测试
 
 signals:
 	void error(QTcpSocket::SocketError socketError);
@@ -105,9 +121,9 @@ private:
 
 	//database
 	QSqlDatabase data_base;
-	datastore _datastore;
+	//datastore _datastore;
 	QMutex _qmutex;
-	struct PATIENTDATA m_patientdata3;    
+	//struct PATIENTDATA m_patientdata3;    
 };
 
 #endif // TCPTHREAD_H
