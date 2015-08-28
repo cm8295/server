@@ -81,11 +81,6 @@ int main(int argc, char *argv[])
 	{
 	qDebug()<<"数据库链接失败";
 	}*/
-	/*for (int i = 0; i < 100; ++i) {
-	TcpThread *thread = new TcpThread(55);
-	thread->start();
-	}*/
-	//_datastore.searchInfo("二尖瓣");
 	return a.exec();
 }
 

@@ -17,20 +17,6 @@ void TcpThread::run()
 	*/
 	//_CrtDumpMemoryLeaks();
 	//
-	/**
-	*  数据库连接池测试
-	*/
-	//// 从数据库连接池里取得连接
-	//QSqlDatabase db = ConnectionPool::openConnection();
-	////qDebug() << "In thread run():" << db.connectionName();
-	//QSqlQuery query(db);
-	//query.exec("SELECT pwd FROM users where id=1");
-	//while (query.next()) {
-	//	qDebug() << query.value(0).toString();
-	//}
-	//// 连接使用完后需要释放回数据库连接池
-	//ConnectionPool::closeConnection(db);
-	//
 	TotalBytes = 0;  
 	bytesReceived = 0;  
 	fileNameSize = 0;  
@@ -54,9 +40,6 @@ void TcpThread::run()
 
 void TcpThread::connectError()
 {
-	//_qmutex.lock();
-	//_datastore->insertSystrmErrorInfo("断开tcp", tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
-	//_qmutex.unlock();
 	if(blFileOpen)
 	{
 		localFile->close();
@@ -66,7 +49,10 @@ void TcpThread::connectError()
 	qDebug()<<"connectError";
 	tcpServerConnection->deleteLater();
 	emit disconnectedSignal(socketDescriptor);
-	terminate();
+	//terminate();
+	//wait();
+	sleep(1);
+	quit();
 }
 
 void TcpThread::receiveData()    //接收文件
@@ -107,16 +93,12 @@ void TcpThread::receiveData()    //接收文件
 			}   
 			if(bytesReceived == TotalBytes)  
 			{   
-				localFile->close();
-				//m_mutexSql.lock();
-				//QMutexLocker _locker(&m_mutexSql);
+				localFile->close();	
 				if (!insertDataToSql(_username, m_filePath.replace('\\','/') + _currentFilename.replace('\\','/').left(_currentFilename.lastIndexOf('/')), 
 					m_filePath + _currentFilename, TotalBytes, FileDigest(m_filePath + _currentFilename), "NULL"))
 				{
 					qDebug()<<_currentFilename + "路径写入数据库失败！";
 				}
-				//m_mutexSql.unlock();
-				//qDebug()<<sFileName;
 				TotalBytes = 0;
 				bytesReceived = 0;
 				fileNameSize = 0;
@@ -258,13 +240,6 @@ void TcpThread::dataProcess(QString _data)
 	/*发送查询到的文件列表(基于文件系统的查找)*/
 	else if (sFile == "FILENAME_BEGIN><FILENAME_END")
 	{
-		/*发送数据*/
-		/**
-		*  测试
-		*/
-		//m_mutexSql.lock();
-		//_datastore.testfun("123456"); 
-		//m_mutexSql.unlock();
 		QString _filter;
 		m_qfileinfolist = GetFileList(upload_AND_download_Path + m_serverPath); 
 		foreach(QFileInfo _fileinfo, m_qfileinfolist)
@@ -376,7 +351,6 @@ void TcpThread::dataProcess(QString _data)
 		/*    数据库匹配用户信息    */
 		int _userInfoCheck = 0;    
 		//查询数据库验证用户名和密码
-		//m_mutexSql.lock();
 		if (searchUserAndPwd(_userName, _userPassword))
 		{
 			_userInfoCheck = 1;
@@ -385,7 +359,6 @@ void TcpThread::dataProcess(QString _data)
 		{
 			_userInfoCheck = 0;
 		}
-		//m_mutexSql.unlock();
 		/*******************************************/
 		if (_userInfoCheck == 1)
 		{
@@ -491,15 +464,8 @@ void TcpThread::displayError(QAbstractSocket::SocketError socketError)
 		break;
 	default: statestring="unknown state";
 	}
-	qDebug()<<"异常\t" + tcpServerConnection->peerAddress().toString() + "\t" + tcpServerConnection->peerName() + "\t" +
-		tcpServerConnection->errorString() + "\t" + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
-	//if(socketError == QTcpSocket::RemoteHostClosedError)  
-	//{
-	//	//return; 
-	//}
-	//_qmutex.lock();
-	//bool _blisfeedback = _datastore->insertSystrmErrorInfo("写数据错误", tcpServerConnection->peerAddress().toString(), (int)tcpServerConnection->peerPort());
-	//_qmutex.unlock();
+	qDebug()<<"Error\t" + tcpServerConnection->peerAddress().toString() + "\t" +
+		tcpServerConnection->errorString() + "\t" + statestring + "\t" + QDateTime::currentDateTime().toString("hh:mm:ss dd.MM.yyyy");
 	if(blFileOpen)
 	{
 		localFile->close();
@@ -514,8 +480,10 @@ void TcpThread::displayError(QAbstractSocket::SocketError socketError)
 	tcpServerConnection->disconnectFromHost();
 	tcpServerConnection->deleteLater();
 	emit disconnectedSignal(socketDescriptor);
-	terminate();
-
+	//terminate();
+    //wait();
+	sleep(1);
+	quit();
 } 
 
 QFileInfoList TcpThread::GetFileList(QString path)

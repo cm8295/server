@@ -19,7 +19,7 @@ ConnectionPool::ConnectionPool(void)
 
 	maxWaitTime  = 1000;
 	waitInterval = 200;
-	maxConnectionCount  = 5;
+	maxConnectionCount  = 100;
 }
 
 
