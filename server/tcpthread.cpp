@@ -27,6 +27,7 @@ void TcpThread::run()
 	blFileOpen = false;
 	blerror = false;
 	upload_AND_download_Path = "G:\\TEEData\\";
+	m_searchPath = "G:\\TEEData_Build\\";
 	tcpServerConnection = new QTcpSocket;
 	if (!tcpServerConnection->setSocketDescriptor(socketDescriptor)) {
 		emit error(tcpServerConnection->error());
@@ -49,10 +50,10 @@ void TcpThread::connectError()
 	qDebug()<<"connectError";
 	tcpServerConnection->deleteLater();
 	emit disconnectedSignal(socketDescriptor);
-	//terminate();
+	terminate();
 	//wait();
-	sleep(1);
-	quit();
+	//sleep(1);
+	//quit();
 }
 
 void TcpThread::receiveData()    //接收文件
@@ -142,8 +143,8 @@ void TcpThread::dataProcess(QString _data)
 	if(sFile == "DOWN_FILE><DOWN_END")
 	{
 		//查找服务器该文件是否存在
-		path = upload_AND_download_Path + m_serverPath.replace("/", "\\"); 
-		qDebug()<<"path:"<<path;
+		path = m_searchPath + m_serverPath.replace("/", "\\"); 
+		//qDebug()<<"path:"<<path;
 		dir.setFile(path);
 		bool blInfo = false;
 		if(dir.exists())
@@ -203,7 +204,7 @@ void TcpThread::dataProcess(QString _data)
 		sendOut.device()->seek(0);  //将读写操作指向从头开始
 		sendOut<<TotalBytes<<qint64(outBlock.size()- sizeof(qint64)*2);  
 		bytesToWrite = TotalBytes - tcpServerConnection->write(outBlock);  
-		qDebug()<<currentFile<<TotalBytes;  
+		//qDebug()<<currentFile<<TotalBytes;  
 		outBlock.resize(0);
 	}
 	/*上传文件*/
@@ -241,7 +242,7 @@ void TcpThread::dataProcess(QString _data)
 	else if (sFile == "FILENAME_BEGIN><FILENAME_END")
 	{
 		QString _filter;
-		m_qfileinfolist = GetFileList(upload_AND_download_Path + m_serverPath); 
+		m_qfileinfolist = GetFileList(m_searchPath + m_serverPath); 
 		foreach(QFileInfo _fileinfo, m_qfileinfolist)
 		{
 			_filter = _fileinfo.completeSuffix();
@@ -251,7 +252,7 @@ void TcpThread::dataProcess(QString _data)
 			}
 			if (!sFileName.isEmpty())
 			{
-				serverData.append(_fileinfo.absoluteFilePath().replace('/','\\').remove(upload_AND_download_Path) + "|");
+				serverData.append(_fileinfo.absoluteFilePath().replace('/','\\').remove(m_searchPath) + "|");
 			}
 		}
 		serverData = serverData.left(serverData.length() - 1);
@@ -480,10 +481,10 @@ void TcpThread::displayError(QAbstractSocket::SocketError socketError)
 	tcpServerConnection->disconnectFromHost();
 	tcpServerConnection->deleteLater();
 	emit disconnectedSignal(socketDescriptor);
-	//terminate();
+	terminate();
     //wait();
-	sleep(1);
-	quit();
+	//sleep(1);
+	//quit();
 } 
 
 QFileInfoList TcpThread::GetFileList(QString path)

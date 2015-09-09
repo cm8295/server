@@ -102,7 +102,7 @@ private:
 	bool blDownLoadFileOpen;
 	QString currenttime;
 	QString upload_AND_download_Path;
-	//QString download_Path;
+	QString m_searchPath;   //²¡ÀúËÑË÷Â·¾¶
 	//datachange *_datachange;
 	bool blerror;
 	QString serverMessage;  
